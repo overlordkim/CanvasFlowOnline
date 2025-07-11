@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt提取测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0D1117;
+            color: #C9D1D9;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #30363D;
+            border-radius: 8px;
+        }
+        .test-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            background: #21262D;
+            border: 1px solid #30363D;
+            border-radius: 6px;
+            color: #C9D1D9;
+            font-family: monospace;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #161B22;
+            border-radius: 6px;
+            border: 1px solid #30363D;
+        }
+        .extract-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .extract-btn:hover {
+            background: #2ea043;
+        }
+        code {
+            background: #21262D;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #79C0FF;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Prompt提取功能测试</h1>
+    
+    <div class="test-section">
+        <h3>测试案例1：标准格式</h3>
+        <textarea class="test-input" id="test1">
+## 📝 **完整绘画提示词**
+
+**English Prompt:**
+```
+A beautiful golden retriever puppy sitting in a sunny garden, photorealistic style, soft natural lighting, detailed fur texture, warm color palette, high quality, masterpiece, 8k resolution
+```
+
+**中文描述：** 一只可爱的金毛犬幼犬坐在阳光花园中，采用写实主义风格，柔和自然光影，细致的毛发纹理，温暖色调，高质量作品。
+
+DRAWING_FINAL:开始绘画
+        </textarea>
+        <button class="extract-btn" onclick="testExtraction('test1', 'result1')">提取Prompt</button>
+        <div class="test-result" id="result1"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>测试案例2：简化格式</h3>
+        <textarea class="test-input" id="test2">
+根据您的选择，我为您生成了完整的绘画提示词：
+
+English Prompt:
+A mystical forest scene with ethereal lighting, fantasy art style, detailed foliage, magical atmosphere, vibrant colors, cinematic composition, high quality artwork
+
+现在您可以开始绘画了！
+
+DRAWING_FINAL:开始创作
+        </textarea>
+        <button class="extract-btn" onclick="testExtraction('test2', 'result2')">提取Prompt</button>
+        <div class="test-result" id="result2"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>测试案例3：代码块格式</h3>
+        <textarea class="test-input" id="test3">
+完整的绘画提示词如下：
+
+```
+Portrait of a young woman with flowing hair, impressionist painting style, soft brush strokes, warm lighting, artistic masterpiece, detailed facial features, beautiful composition
+```
+
+请点击下方按钮开始绘画。
+        </textarea>
+        <button class="extract-btn" onclick="testExtraction('test3', 'result3')">提取Prompt</button>
+        <div class="test-result" id="result3"></div>
+    </div>
+
+    <script>
+        // 复制CanvasFlow中的prompt提取逻辑
+        function extractPrompt(messageText) {
+            let prompt = '';
+            console.log('正在分析消息:', messageText);
+            
+            // 方法1：寻找包含English Prompt的行
+            let englishPromptMatch = messageText.match(/English Prompt[：:\s]*[\n\r]*([\s\S]*?)(?=\n\n|\n[^\w]|$)/);
+            if (englishPromptMatch) {
+                prompt = englishPromptMatch[1].trim();
+                console.log('通过English Prompt标识提取到:', prompt);
+                return prompt;
+            }
+            
+            // 方法2：寻找代码块中的英文内容
+            const codeMatches = messageText.match(/```([\s\S]*?)```/g);
+            if (codeMatches) {
+                for (let codeMatch of codeMatches) {
+                    const codeText = codeMatch.replace(/```/g, '').trim();
+                    // 检查是否主要是英文且长度合适
+                    const englishWordCount = (codeText.match(/\b[a-zA-Z]+\b/g) || []).length;
+                    const totalWords = codeText.split(/\s+/).length;
+                    
+                    if (codeText.length > 30 && 
+                        englishWordCount > totalWords * 0.7 && // 70%以上是英文单词
+                        englishWordCount > 5) {
+                        prompt = codeText;
+                        console.log('通过代码块提取到:', prompt);
+                        return prompt;
+                    }
+                }
+            }
+            
+            // 方法3：直接搜索"English Prompt:"后的内容
+            const lines = messageText.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('English Prompt')) {
+                    // 获取后续行作为prompt
+                    for (let j = i + 1; j < lines.length && j < i + 5; j++) {
+                        const line = lines[j].trim();
+                        if (line && line.length > 20 && /^[a-zA-Z]/.test(line)) {
+                            prompt = line;
+                            console.log('通过行搜索提取到:', prompt);
+                            return prompt;
+                        }
+                    }
+                }
+            }
+            
+            return prompt;
+        }
+
+        function testExtraction(inputId, resultId) {
+            const inputText = document.getElementById(inputId).value;
+            const extractedPrompt = extractPrompt(inputText);
+            const resultDiv = document.getElementById(resultId);
+            
+            if (extractedPrompt) {
+                resultDiv.innerHTML = `
+                    <h4>✅ 提取成功</h4>
+                    <p><strong>提取到的Prompt:</strong></p>
+                    <code>${extractedPrompt}</code>
+                `;
+                resultDiv.style.border = '1px solid #238636';
+            } else {
+                resultDiv.innerHTML = `
+                    <h4>❌ 提取失败</h4>
+                    <p>无法从输入文本中提取到有效的英文prompt</p>
+                `;
+                resultDiv.style.border = '1px solid #F85149';
+            }
+        }
+    </script>
+</body>
+</html> 
