@@ -482,12 +482,14 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-    .sidebar {
-        width: 250px;
+    body {
+        overflow: auto; /* 允许在小屏幕上滚动 */
     }
-    
+    .sidebar {
+        min-height: 250px; /* 确保在折叠时侧边栏有最小高度 */
+    }
     .chat-header {
-        padding: 16px 20px;
+        padding: 16px;
     }
     
     .messages-container {
